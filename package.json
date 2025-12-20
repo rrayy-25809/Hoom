@@ -1,0 +1,9 @@
+{
+  "name": "hoom",
+  "version": "1.0.0",
+  "description": "Zoom Clone using WebRTC and Websocket by Ham",
+  "license": "MIT",
+  "devDependencies": {
+    "nodemon": "^3.1.11"
+  }
+}
