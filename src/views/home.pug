@@ -9,11 +9,10 @@ html(lang="ko")
         header 
             h1 Hoom!
         main
-            form(action="", method="post")#nickname
-                input(type="text", placeholder="choose ur nickname", required)
-                button(type="submit") Save
-            ul
-            form(action="", method="post")#message
-                input(type="text", placeholder="write a msg", required)
-                button(type="submit") Send
+            div#welcome
+                form
+                    input(placeholder="room name", required, type="text")
+                    button(type="submit") Enter Room
+        script(src="/socket.io/socket.io.js")
+        //- socket.io는 브라우저 내장이 아니라 외부 라이브러리라 클라이언트도 설치
         script(src="/public/js/app.js")

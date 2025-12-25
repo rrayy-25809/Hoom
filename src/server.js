@@ -1,5 +1,5 @@
 import http from "http";
-import WebShoket from "ws";
+import SocketIO from "socket.io";
 import express from "express";
 
 const app = express();
@@ -16,37 +16,13 @@ app.get("/", (req, res) => res.render("home"));
 // });
 
 const server = http.createServer(app); // http 모듈을 사용하여 서버 생성
-const wss = new WebShoket.Server({ server }); // http 서버를 WebSocket에 전달 (두 프로토콜이 같은 포트 공유)
+const io = SocketIO(server)
 
-const sockets = [];
-
-// WebSocket 서버 Event Handling
-wss.on("connection", (socket) => {
-    socket["nickname"] = "Anonymous";
-    sockets.push(socket);
-    console.log("Connected to Client");
-
-    socket.on("close", () => {
-        const idx = sockets.indexOf(socket);
-        if (idx > -1) sockets.splice(idx, 1); // 연결 종료된 소켓을 배열에서 제거
-
-        console.log("Disconnected from Client");
-    });
-
-    socket.on("message", (message) => {
-        const parsed = JSON.parse(message.toString('utf-8'));
-
-        switch (parsed.type) {
-            case "new_message":
-                sockets.forEach((aSocket) => {
-                    aSocket.send(`${socket.nickname}: ${parsed.payload}`);
-                });
-                break;
-            case "nickname":
-                socket["nickname"] = parsed.payload;
-                break;
-        }
-    });
+io.on("connection", socket => {
+    socket.on("enter_room", (msg, done) => {
+        console.log(msg);
+        setTimeout(done, 10000)
+    })
 });
 
 server.listen(3000, () => {
