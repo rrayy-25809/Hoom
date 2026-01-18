@@ -1,30 +1,73 @@
-import http from "http";
-import SocketIO from "socket.io";
-import express from "express";
+import http from 'http';
+import { Server } from 'socket.io';
+import { instrument } from '@socket.io/admin-ui';
+import express from 'express';
 
 const app = express();
 
-// File Settings
-app.set("view engine", "pug");
-app.set("views", __dirname + "/views");
-app.use("/public", express.static(__dirname + "/public"));
+app.set('view engine', 'pug');
+app.set('views', __dirname + '/views');
+app.use('/public', express.static(__dirname + '/public'));
+app.get('/', (_, res) => res.render('home'));
+app.get('/*', (_, res) => res.redirect('/'));
 
-app.get("/", (req, res) => res.render("home"));
-
-// app.listen(3000, () => {
-//     console.log("Server is running at http://localhost:3000");
-// });
-
-const server = http.createServer(app); // http 모듈을 사용하여 서버 생성
-const io = SocketIO(server)
-
-io.on("connection", socket => {
-    socket.on("enter_room", (msg, done) => {
-        console.log(msg);
-        setTimeout(done, 10000)
-    })
+const httpServer = http.createServer(app);
+const io = new Server(httpServer, {
+  cors: {
+    origin: ['https://admin.socket.io'],
+    credentials: true,
+  },
 });
 
-server.listen(3000, () => {
-    console.log("Server is running at http://localhost:3000");
+instrument(io, {
+  auth: false,
 });
+
+function publicRooms() {
+  const {
+    sockets: {
+      adapter: { sids, rooms },
+    },
+  } = io;
+  const publicRooms = [];
+  rooms.forEach((_, key) => {
+    if (sids.get(key) === undefined) {
+      publicRooms.push(key);
+    }
+  });
+  return publicRooms;
+}
+
+function countRoom(roomName) {
+  return io.sockets.adapter.rooms.get(roomName)?.size;
+}
+
+io.on('connection', (socket) => {
+  socket['nickname'] = 'Anonymous';
+  socket.onAny((event) => {
+    console.log(io.sockets.adapter);
+    console.log(`Socket Event: ${event}`);
+  });
+  socket.on('enter_room', (roomName, showRoom) => {
+    socket.join(roomName);
+    showRoom();
+    socket.to(roomName).emit('welcome', socket.nickname, countRoom(roomName));
+    io.sockets.emit('room_change', publicRooms());
+  });
+  socket.on('disconnecting', () => {
+    socket.rooms.forEach((room) =>
+      socket.to(room).emit('bye', socket.nickname, countRoom(room) - 1)
+    );
+  });
+  socket.on('disconnect', () => {
+    io.sockets.emit('room_change', publicRooms());
+  });
+  socket.on('new_message', (msg, roomName, done) => {
+    socket.to(roomName).emit('new_message', `${socket['nickname']}: ${msg}`);
+    done();
+  });
+  socket.on('nickname', (nickname) => (socket['nickname'] = nickname));
+});
+
+const handleListen = () => console.log(`Listening on http://localhost:3000`);
+httpServer.listen(process.env.PORT, handleListen);
